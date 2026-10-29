@@ -1,0 +1,49 @@
+#!/bin/bash
+
+#Displays the public IP Address
+echo "[*] Public IP Found:"
+echo " [ + ] $(curl -s ifconfig.co)"
+
+#Identify the active interfaces
+net_info=$(ifconfig | grep broadcast -w -n1)
+#Identify the interfaces' names
+net_interfaces=$(echo "$net_info" | awk '{print $1}' | awk -F '-' '{print $2}' | grep "\w*:")
+#Identify the private IP address assigned to the system's network interfaces
+private_ips=$(echo "$net_info" | grep inet | awk '{print $3}')
+#Identify the MAC addresses (masking sensitive portions for security).
+mac_addresses=$(echo "$net_info" | grep ether | awk '{print $3}'|awk -F ':' '{print $1,$2,$3 ":xx:xx:xx"}' | tr ' ' ':')
+#Organizes the IP and MAC for each interface (order interface-ip-mac)
+combined=$(paste -d '-' <(echo "$net_interfaces") <(echo "$private_ips") <(echo "$mac_addresses"))
+
+echo
+echo "[*] Network interfaces:"
+for interface in $combined;do
+	#Displays the interface
+	echo " [ + ] $(echo $interface | awk -F '-' '{print $1}')"
+	#Displays the private IP address assigned
+	echo "	-Private IP Address: $(echo $interface | awk -F '-' '{print $2}')"
+ 	#Display the MAC address (masking sensitive portions for security).
+	echo "	-MAC Address: $(echo $interface | awk -F '-' '{print $3}')"
+done
+
+echo
+echo "[*] Top Processes:"
+#Display the percentage of CPU usage for the top 5 processes.
+ps -eo "pid,%cpu,comm" --sort=-%cpu | head -n6
+
+#Display memory usage statistics: total and available memory.
+echo
+echo "[*] Memmory:"
+memmory=$(free -h | grep Mem)
+echo " [ + ] Total: $(echo $memmory | awk '{print $2}')"
+echo " [ + ] Available: $(echo $memmory | awk '{print $NF}')"
+
+echo
+echo "[*] Active services:"
+#List active system services with their status.
+service --status-all | grep -F '[ + ]'
+
+echo
+echo "[*] The Largest files in /home"
+#Locate the Top 10 Largest Files in /home.
+du -ha /home 2>/dev/null | sort -n | tail -n10 | awk '{print " [ + ] " $1,$2}'
